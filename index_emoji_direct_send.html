@@ -1,0 +1,202 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SyncWatch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+:root{--bg:#0f0f0f;--panel:#181818;--accent:#e50914;--blue:#1f80e0;--text:#fff}
+*{box-sizing:border-box;font-family:Arial,Helvetica,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text)}
+.hidden{display:none!important}
+
+/* JOIN */
+#joinScreen{position:fixed;inset:0;background:linear-gradient(135deg,#000,#222);display:flex;justify-content:center;align-items:center;z-index:9999}
+.join-card{background:#111;padding:26px;border-radius:16px;width:320px;text-align:center;box-shadow:0 0 40px rgba(0,0,0,.8)}
+.avatar{width:110px;height:110px;margin:0 auto 14px;border-radius:50%;border:2px dashed #555;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden}
+.avatar span{font-size:12px;color:#aaa}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.join-card input{width:100%;padding:12px;margin:10px 0;border-radius:8px;border:none}
+.join-card button{width:100%;padding:14px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-weight:bold;font-size:16px;cursor:pointer}
+
+/* HEADER */
+header{background:var(--panel);padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+#badge img{width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:6px}
+
+/* MAIN */
+main{display:flex;flex-wrap:wrap}
+.video{flex:2;padding:12px}
+.side{flex:1;background:#1b1b1b;padding:12px;display:flex;flex-direction:column}
+video{width:100%;max-height:60vh;background:#000;border-radius:10px}
+.controls{margin-top:10px}
+.controls button{padding:10px 16px;margin-right:8px;border:none;border-radius:10px;color:#fff;font-weight:bold;cursor:pointer}
+.mic{background:var(--accent)} .spk{background:var(--blue)}
+
+#users,#chat{flex:1;border:1px solid #333;border-radius:10px;padding:8px;margin-bottom:8px;overflow:auto}
+
+/* WATCHING */
+.user-row{display:flex;align-items:center;margin-bottom:6px}
+.user-row img{width:28px;height:28px;border-radius:50%;margin-right:6px}
+
+/* CHAT */
+.chat-msg{display:flex;align-items:center;margin-bottom:6px}
+.chat-msg img{width:28px;height:28px;border-radius:50%;margin-right:6px}
+.chat-input{display:flex;align-items:center;gap:6px;position:relative}
+.chat-input input{flex:1;padding:10px;border-radius:8px;border:none}
+.chat-input button{padding:10px 14px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-weight:bold;cursor:pointer}
+.emoji-btn{width:40px;height:40px;border-radius:50%;border:none;cursor:pointer;background:#2a2a2a;color:#fff;font-size:20px}
+
+/* EMOJI PICKER */
+.emoji-picker{
+  position:absolute;bottom:50px;left:0;
+  background:#222;border:1px solid #333;border-radius:10px;
+  padding:8px;display:grid;grid-template-columns:repeat(6,1fr);
+  gap:6px;z-index:999;
+}
+.emoji-picker span{cursor:pointer;font-size:20px;text-align:center}
+
+@media(max-width:768px){main{flex-direction:column}}
+</style>
+</head>
+<body>
+
+<div id="joinScreen">
+  <div class="join-card">
+    <div class="avatar" id="pick">
+      <span>Select DP</span>
+      <img id="dp" class="hidden">
+    </div>
+    <input id="name" placeholder="Enter your name">
+    <button id="go">Continue</button>
+  </div>
+</div>
+
+<header>
+  <div>🎬 SyncWatch By Ajay</div>
+  <div id="badge"></div>
+</header>
+
+<main>
+  <div class="video">
+    <input type="file" id="file" accept="video/*">
+    <video id="vid" controls></video>
+    <div class="controls">
+      <button class="mic" id="mic">🎤 Mic</button>
+      <button class="spk" id="spk">🔊 Speaker</button>
+    </div>
+  </div>
+
+  <div class="side">
+    <h4>👥 Watching</h4>
+    <div id="users"></div>
+
+    <h4>💬 Chat</h4>
+    <div id="chat"></div>
+
+    <div class="chat-input">
+      <button class="emoji-btn" id="emojiBtn">😊</button>
+      <input id="msg" placeholder="Message">
+      <button id="send">Send</button>
+      <div id="emojiPicker" class="emoji-picker hidden"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* PROFILE */
+const join=document.getElementById("joinScreen");
+const nameInput=document.getElementById("name");
+const pick=document.getElementById("pick");
+const dp=document.getElementById("dp");
+const go=document.getElementById("go");
+const badge=document.getElementById("badge");
+const usersBox=document.getElementById("users");
+
+let profile=JSON.parse(localStorage.getItem("syncwatch_profile")||"null");
+
+if(profile){
+  nameInput.value=profile.name||"";
+  if(profile.avatar){
+    dp.src=profile.avatar;dp.classList.remove("hidden");
+    pick.querySelector("span").style.display="none";
+    pick.dataset.a=profile.avatar;
+  }
+}
+
+pick.onclick=()=>{
+  const i=document.createElement("input");
+  i.type="file";i.accept="image/*";
+  i.onchange=()=>{
+    const r=new FileReader();
+    r.onload=()=>{
+      dp.src=r.result;dp.classList.remove("hidden");
+      pick.querySelector("span").style.display="none";
+      pick.dataset.a=r.result;
+    };
+    r.readAsDataURL(i.files[0]);
+  };
+  i.click();
+};
+
+go.onclick=()=>{
+  if(!nameInput.value.trim()) return alert("Enter name");
+  profile={name:nameInput.value.trim(),avatar:pick.dataset.a||null};
+  localStorage.setItem("syncwatch_profile",JSON.stringify(profile));
+  join.classList.add("hidden");
+  badge.innerHTML=profile.avatar?`<img src="${profile.avatar}">${profile.name}`:profile.name;
+
+  // Watching
+  usersBox.innerHTML="";
+  const row=document.createElement("div");
+  row.className="user-row";
+  const img=document.createElement("img");
+  img.src=profile.avatar||"https://via.placeholder.com/28";
+  const span=document.createElement("span");
+  span.textContent=profile.name+" (You)";
+  row.appendChild(img);row.appendChild(span);
+  usersBox.appendChild(row);
+};
+
+/* VIDEO */
+file.onchange=e=>{vid.src=URL.createObjectURL(e.target.files[0])};
+spk.onclick=()=>{vid.muted=!vid.muted};
+mic.onclick=()=>{alert("Voice works in realtime version")}
+
+/* CHAT + EMOJI DIRECT SEND */
+const emojiBtn=document.getElementById("emojiBtn");
+const emojiPicker=document.getElementById("emojiPicker");
+const emojis=["😀","😁","😂","🤣","😊","😍","😘","😎","🤔","😢","😭","😡","👍","👎","🔥","🎉","❤️","💯"];
+
+function sendMessage(text){
+  const row=document.createElement("div");
+  row.className="chat-msg";
+  const img=document.createElement("img");
+  img.src=profile.avatar||"https://via.placeholder.com/28";
+  const span=document.createElement("span");
+  span.textContent=profile.name+": "+text;
+  row.appendChild(img);row.appendChild(span);
+  chat.appendChild(row);
+}
+
+emojis.forEach(e=>{
+  const s=document.createElement("span");
+  s.textContent=e;
+  s.onclick=()=>{
+    sendMessage(e);        // DIRECT SEND
+    emojiPicker.classList.add("hidden");
+  };
+  emojiPicker.appendChild(s);
+});
+
+emojiBtn.onclick=()=>{emojiPicker.classList.toggle("hidden")};
+
+send.onclick=()=>{
+  if(!msg.value) return;
+  sendMessage(msg.value);
+  msg.value="";
+};
+</script>
+
+</body>
+</html>
